@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM RAM Calculator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.9/MathJax.js?config=TeX-MML-AM_CHTML"></script>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background-color: #000;
+            color: #0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+            overflow-x: hidden;
+        }
+        .container {
+            background-color: rgba(0, 20, 0, 0.8);
+            border: 1px solid #0f0;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px #0f0;
+            max-width: 600px;
+            width: 90%;
+        }
+        h1, h2 {
+            text-align: center;
+            text-shadow: 0 0 5px #0f0;
+        }
+        label, input, button {
+            display: block;
+            width: 100%;
+            margin: 10px 0;
+            font-size: 16px;
+        }
+        input, button {
+            background-color: #000;
+            color: #0f0;
+            border: 1px solid #0f0;
+            padding: 5px;
+        }
+        button {
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #0f0;
+            color: #000;
+        }
+        #result, #example, #equation, #definitions, #credit {
+            font-size: 16px;
+            margin-top: 20px;
+            border-top: 1px solid #0f0;
+            padding-top: 20px;
+        }
+        .matrix-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            border: 1px solid #0f0;
+            padding: 5px;
+            text-align: left;
+        }
+        .equation {
+            text-align: center;
+            font-size: 24px;
+            margin: 20px 0;
+            color: #0f0;
+        }
+    </style>
+</head>
+<body>
+    <canvas class="matrix-bg" id="matrix"></canvas>
+    <div class="container">
+        <h1>LLM RAM Calculator</h1>
+        <form id="calculator-form">
+            <label for="parameters">Number of parameters (P):</label>
+            <input type="number" id="parameters" required>
+            
+            <label for="bits">Bit Mode when loading model (Q):</label>
+            <input type="number" id="bits" required>
+            
+            <button type="submit">Calculate</button>
+        </form>
+        <div id="result"></div>
+        <div id="equation">
+            <h2>Equation</h2>
+            <div class="equation">
+                \[M = \frac{P \cdot 4B}{32 / Q} \cdot 1.2\]
+            </div>
+        </div>
+        <div id="definitions">
+            <h2>Definitions</h2>
+            <table>
+                <tr><th>Symbol</th><th>Description</th></tr>
+                <tr><td>M</td><td>GPU memory expressed in Gigabyte</td></tr>
+                <tr><td>P</td><td>The amount of parameters in the model. E.g. a 7B model has 7 billion parameters.</td></tr>
+                <tr><td>4B</td><td>4 bytes, expressing the bytes used for each parameter</td></tr>
+                <tr><td>32</td><td>There are 32 bits in 4 bytes</td></tr>
+                <tr><td>Q</td><td>The amount of bits that should be used for loading the model. E.g. 16 bits, 8 bits or 4 bits.</td></tr>
+                <tr><td>1.2</td><td>Represents a 20% overhead of loading additional things in GPU memory.</td></tr>
+            </table>
+        </div>
+        <div id="example">
+            <h2>Example: Llama 70B</h2>
+            <p>For Llama 70B loaded in 16-bit mode:</p>
+            <p>70 * 4bytes / (32/16) * 1.2 = 168GB</p>
+        </div>
+        <div id="credit">
+            <h2>Credit</h2>
+            <p>Equation credit: This equation is attributed to Sam Stoelinga. You can find more about Sam at <a href="https://www.linkedin.com/in/samstoelinga/" style="color: #0f0;">https://www.linkedin.com/in/samstoelinga/</a></p>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Matrix background effect
+            const canvas = document.getElementById('matrix');
+            const ctx = canvas.getContext('2d');
+
+            function resizeCanvas() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+
+            const katakana = 'アァカサタナハマヤャラワガザダバパイィキシチニヒミリヰギジヂビピウゥクスツヌフムユュルグズブヅプエェケセテネヘメレヱゲゼデベペオォコソトノホモヨョロヲゴゾドボポヴッン';
+            const latin = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            const nums = '0123456789';
+
+            const alphabet = katakana + latin + nums;
+
+            const fontSize = 16;
+            const columns = canvas.width / fontSize;
+
+            const rainDrops = Array(Math.floor(columns)).fill(1);
+
+            function draw() {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                ctx.fillStyle = '#0f0';
+                ctx.font = fontSize + 'px monospace';
+
+                for (let i = 0; i < rainDrops.length; i++) {
+                    const text = alphabet.charAt(Math.floor(Math.random() * alphabet.length));
+                    ctx.fillText(text, i * fontSize, rainDrops[i] * fontSize);
+
+                    if (rainDrops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                        rainDrops[i] = 0;
+                    }
+                    rainDrops[i]++;
+                }
+            }
+
+            setInterval(draw, 30);
+
+            // Calculator logic
+            document.getElementById('calculator-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const P = parseFloat(document.getElementById('parameters').value);
+                const Q = parseFloat(document.getElementById('bits').value);
+                
+                const M = ((P * 4) / (32 / Q)) * 1.2;
+                
+                document.getElementById('result').innerHTML = `Required GPU memory: ${M.toFixed(2)} GB`;
+            });
+        });
+    </script>
+</body>
+</html>
